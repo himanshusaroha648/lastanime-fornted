@@ -37,18 +37,24 @@ function Auth() {
     setError('');
     setLoading(true);
     try {
+      // Direct call to /api/auth/forgot-password, relative to the current host
+      // If deployed on Cloudflare, it will hit the backend URL configured in VITE_API_BASE_URL
       const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
       const cleanBaseUrl = baseUrl.endsWith('/api') ? baseUrl.slice(0, -4) : baseUrl;
+      
+      console.log('Sending forgot password request to:', `${cleanBaseUrl}/api/auth/forgot-password`);
+      
       const response = await fetch(`${cleanBaseUrl}/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail })
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
+      if (!response.ok) throw new Error(data.error || 'Failed to send OTP');
       setSuccess('OTP sent to your email');
       setForgotStep(2);
     } catch (err) {
+      console.error('Forgot password error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -68,7 +74,7 @@ function Auth() {
         body: JSON.stringify({ email: forgotEmail, otp, newPassword })
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
+      if (!response.ok) throw new Error(data.error || 'Failed to reset password');
       setSuccess('Password reset successful! You can now login.');
       setShowForgotPass(false);
       setIsLogin(true);
