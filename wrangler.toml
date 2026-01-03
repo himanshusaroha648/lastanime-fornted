@@ -1,0 +1,17 @@
+name = "aniverse-frontend"
+type = "javascript"
+account_id = ""
+workers_dev = true
+
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Build configuration
+build = { command = "npm run build", cwd = "." }
+
+# Assets/Static files to serve
+[env.production]
+vars = { ENVIRONMENT = "production" }
+
+# Environment variables for production
+[env.production.vars]
