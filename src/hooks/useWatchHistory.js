@@ -11,26 +11,43 @@ export function useWatchHistory() {
   const { user, userProfile, authToken } = useAuth();
 
   const trackWatch = useCallback(async (watchData) => {
-    if (!user || !userProfile || !authToken) {
-      console.log('User not authenticated or token missing, skipping watch history');
+    if (!user || !authToken) {
+      console.log('DEBUG: User not authenticated or token missing, skipping watch history', { user: !!user, authToken: !!authToken });
       return;
     }
 
     try {
       const backendUrl = getBackendUrl();
+      // Ensure we have a username even if userProfile is not loaded yet
+      const username = userProfile?.username || user.email.split('@')[0];
+      
+      const payload = {
+        email: user.email,
+        series_slug: watchData.series_slug || null,
+        movie_slug: watchData.movie_slug || null,
+        series_name: watchData.series_name || null,
+        movie_name: watchData.movie_name || null,
+        season_number: String(watchData.season_number || ''),
+        episode_number: String(watchData.episode_number || ''),
+        title: watchData.title || null,
+        poster_image: watchData.poster_image || null,
+        data: {
+          username: username,
+          type: watchData.type || (watchData.movie_slug ? 'movie' : 'series'),
+          timestamp: new Date().toISOString(),
+          ...watchData.extra_data
+        }
+      };
+
+      console.log('DEBUG: Sending watch history payload:', payload);
+
       const response = await fetch(`${backendUrl}/api/watch-history`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`
         },
-        body: JSON.stringify({
-          email: user.email,
-          username: userProfile.username,
-          first_name: userProfile.first_name,
-          last_name: userProfile.last_name,
-          ...watchData
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {

@@ -365,6 +365,73 @@ app.post('/api/movies/:slug/comments', async (req, res) => {
   }
 });
 
+// Watch History Endpoints
+app.post('/api/watch-history', async (req, res) => {
+  try {
+    const {
+      email,
+      series_slug,
+      movie_slug,
+      series_name,
+      movie_name,
+      season_number,
+      episode_number,
+      title,
+      poster_image,
+      data
+    } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'User email is required' });
+    }
+
+    const { data: result, error } = await supabase
+      .from('watch_history')
+      .upsert({
+        user_email: email,
+        series_slug: series_slug || null,
+        series_name: series_name || null,
+        movie_slug: movie_slug || null,
+        movie_name: movie_name || null,
+        season_number: season_number ? String(season_number) : null,
+        episode_number: episode_number ? String(episode_number) : null,
+        title: title || null,
+        poster_image: poster_image || null,
+        data: data || {},
+        watched_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_email,series_slug,episode_number,season_number'
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Error saving watch history:', error);
+    res.status(500).json({ error: 'Failed to save watch history' });
+  }
+});
+
+app.get('/api/watch-history/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const { data, error } = await supabase
+      .from('watch_history')
+      .select('*')
+      .eq('user_email', email)
+      .order('watched_at', { ascending: false });
+
+    if (error) throw error;
+
+    res.json({ success: true, data: data || [] });
+  } catch (error) {
+    console.error('Error fetching watch history:', error);
+    res.status(500).json({ error: 'Failed to fetch watch history' });
+  }
+});
+
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });

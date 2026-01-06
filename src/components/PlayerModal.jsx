@@ -18,7 +18,6 @@ function PlayerModal({ open, onClose, episode, onPrev, onNext, seriesTitle, epis
         const [activeSource, setActiveSource] = useState('');
         const { user, userProfile } = useAuth();
         const { trackWatch } = useWatchHistory();
-        const watchTrackedRef = useRef(false);
         const lastWatchedRef = useRef(null);
 
         const sources = useMemo(() => {
@@ -43,7 +42,6 @@ function PlayerModal({ open, onClose, episode, onPrev, onNext, seriesTitle, epis
 
         useEffect(() => {
                 if (!open) {
-                        watchTrackedRef.current = false;
                         setActiveSource(''); 
                         return;
                 }
@@ -57,32 +55,36 @@ function PlayerModal({ open, onClose, episode, onPrev, onNext, seriesTitle, epis
                     if (defaultSource) {
                         setActiveSource(defaultSource);
                     }
-                }, 300); // Slightly longer timeout for better stability
+                }, 300);
 
-                // Track watch only once per unique episode (prevent duplicates)
-                if (episode && !watchTrackedRef.current) {
-                    const currentEpisodeKey = `${episodeInfo.seriesSlug}-S${episodeInfo.seasonNumber}-E${episodeInfo.episodeNumber}`;
-                    if (lastWatchedRef.current !== currentEpisodeKey) {
-                        watchTrackedRef.current = true;
-                        lastWatchedRef.current = currentEpisodeKey;
+                // Track watch only once per unique episode/movie when player opens
+                if (episode && user && userProfile) {
+                    const seriesSlug = episodeInfo.seriesSlug || (episodeInfo.movieSlug ? null : 'unknown');
+                    const movieSlug = episodeInfo.movieSlug || null;
+                    const season = String(episodeInfo.seasonNumber || '');
+                    const epNum = String(episodeInfo.episodeNumber || '');
+                    
+                    const currentKey = movieSlug ? `movie-${movieSlug}` : `series-${seriesSlug}-s${season}-e${epNum}`;
+                    
+                    if (lastWatchedRef.current !== currentKey) {
+                        lastWatchedRef.current = currentKey;
+                        console.log('DEBUG: Triggering watch history API call for:', currentKey);
                         
-                        // Only track if user is logged in, but don't block playback
-                        if (user && userProfile) {
-                            trackWatch({
-                                series_name: seriesTitle,
-                                series_slug: episodeInfo.seriesSlug,
-                                movie_name: episodeInfo.movieTitle,
-                                movie_slug: episodeInfo.movieSlug,
-                                episode_number: episodeInfo.episodeNumber,
-                                season_number: episodeInfo.seasonNumber,
-                                poster_image: seriesPoster || moviePoster || episode.thumbnail,
-                                title: episode.title
-                            });
-                        }
+                        trackWatch({
+                            series_name: seriesTitle || null,
+                            series_slug: seriesSlug,
+                            movie_name: episodeInfo.movieTitle || null,
+                            movie_slug: movieSlug,
+                            episode_number: epNum,
+                            season_number: season,
+                            poster_image: seriesPoster || moviePoster || episode.thumbnail || null,
+                            title: episode.title || seriesTitle || episodeInfo.movieTitle,
+                            type: movieSlug ? 'movie' : 'series'
+                        });
                     }
                 }
                 return () => clearTimeout(timer);
-        }, [open, user, userProfile, episode?.title, episodeInfo.seriesSlug, episodeInfo.episodeNumber, seriesTitle, sources]);
+        }, [open, user, userProfile, episode, episodeInfo, seriesTitle, seriesPoster, moviePoster, trackWatch, sources]);
 
         if (!open || !episode) return null;
 

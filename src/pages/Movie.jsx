@@ -1,44 +1,30 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { Heart } from 'lucide-react';
-import { fetchMovieMetadata, addMovieComment } from '../api/client.js';
-import { useAuth } from '../context/AuthContext.jsx';
-import { useFavorites } from '../hooks/useFavorites.js';
+import { fetchMovieMetadata } from '../api/client.js';
 import SkeletonCard from '../components/SkeletonCard.jsx';
 import PlayerModal from '../components/PlayerModal.jsx';
-import StoredComments from '../components/StoredComments.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
+import { useWatchHistory } from '../hooks/useWatchHistory.js';
 
 function Movie() {
         const { id } = useParams();
         const navigate = useNavigate();
-        const { user, authToken, userProfile, loading: authLoading } = useAuth();
-
-        useEffect(() => {
-                if (!authLoading && !user) {
-                        navigate('/auth');
-                }
-        }, [user, authLoading, navigate]);
-
-        const { addFavorite, removeFavorite, isFavorited } = useFavorites();
         const [movie, setMovie] = useState(null);
         const [loading, setLoading] = useState(true);
         const [error, setError] = useState(null);
         const [playerOpen, setPlayerOpen] = useState(false);
-        const [isFav, setIsFav] = useState(false);
-        const [comments, setComments] = useState([]);
+
+        const { user } = useAuth();
+        const { trackWatch } = useWatchHistory();
 
         useEffect(() => {
                 setLoading(true);
                 setError(null);
                 fetchMovieMetadata(id)
-                        .then((payload) => {
-                                setMovie(payload);
-                                setComments(payload.comments || []);
-                        })
+                        .then((payload) => setMovie(payload))
                         .catch(() => {
                                 setMovie(null);
                                 setError('Movie not found');
-                                setComments([]);
                         })
                         .finally(() => setLoading(false));
         }, [id]);
@@ -46,13 +32,12 @@ function Movie() {
         useEffect(() => {
                 if (movie && movie.title) {
                         document.title = `${movie.title} · LASTANIME`;
-                        setIsFav(isFavorited(id));
                 }
-        }, [movie, id, isFavorited]);
+        }, [movie]);
 
         const normalizedEpisode = useMemo(() => {
                 if (!movie) return null;
-                
+
                 let cleanDescription = movie.description || '';
                 cleanDescription = cleanDescription
                         .replace(/Watch.*?(?:on|at)\s+ToonStream[^.!?]*(\.|\!|\?)/gi, '')
@@ -62,7 +47,7 @@ function Movie() {
                         .replace(/\bToonStream\b/gi, '')
                         .replace(/\s+/g, ' ')
                         .trim();
-                
+
                 return {
                         title: movie.title,
                         duration: movie.runtime ? `${movie.runtime} min` : '',
@@ -122,7 +107,7 @@ function Movie() {
                                         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/60 to-black/80" />
                                 </div>
                         )}
-                        
+
                         <section className="mx-auto max-w-7xl px-4 py-8 md:py-12 relative z-10">
                                 <div className="flex flex-col md:flex-row gap-8">
                                         {/* Left: Poster Image */}
@@ -133,11 +118,19 @@ function Movie() {
                                                         className="w-full md:w-64 aspect-[2/3] rounded-2xl object-cover shadow-2xl"
                                                 />
                                         </div>
-                                        
+
                                         {/* Right: Content */}
                                         <div className="flex-1 space-y-5">
+                                                {/* Breadcrumb */}
+                                                <p className="text-sm text-muted">
+                                                        <Link to="/" className="hover:text-primary">
+                                                                Home
+                                                        </Link>{' '}
+                                                        / Movies
+                                                </p>
 
-
+                                                {/* Title */}
+                                                <h1 className="text-3xl md:text-4xl font-bold text-white">{movie.title}</h1>
                                                 {/* Genres */}
                                                 {(movie.genres && movie.genres.length > 0) && (
                                                         <div className="flex flex-wrap gap-1">
@@ -153,10 +146,10 @@ function Movie() {
                                                                 ))}
                                                         </div>
                                                 )}
-                                                
+
                                                 {/* Description */}
                                                 <p className="text-muted/90 leading-relaxed">{normalizedEpisode?.description || 'Description unavailable.'}</p>
-                                                
+
                                                 {/* Metadata Grid */}
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 border-y border-white/10">
                                                         <div>
@@ -179,18 +172,57 @@ function Movie() {
                                                 {/* Play Button */}
                                                 <button
                                                         type="button"
-                                                        onClick={() => {
-                                                                if (!user) {
-                                                                        navigate('/auth');
-                                                                        return;
-                                                                }
-                                                                setPlayerOpen(true);
-                                                        }}
+                                                        onClick={() => setPlayerOpen(true)}
                                                         className="w-full md:w-auto rounded-lg bg-primary px-8 py-4 text-base font-semibold text-white transition hover:bg-primary/90 shadow-lg"
                                                 >
                                                         ▶ Watch Now
                                                 </button>
-                                                
+
+                                                {/* Track watch history when movie is loaded */}
+                                                {useEffect(() => {
+                                                    if (movie && user) {
+                                                        console.log('DEBUG: Triggering trackWatch for Movie');
+                                                        trackWatch({
+                                                            movie_slug: id,
+                                                            movie_name: movie.title,
+                                                            title: movie.title,
+                                                            poster_image: movie.poster || movie.poster_image,
+                                                            type: 'movie'
+                                                        });
+                                                    }
+                                                }, [movie, user, trackWatch, id])}
+
+                                                {/* Available Servers */}
+                                                <div className="glass-surface rounded-3xl border border-white/5 p-6 mt-6">
+                                                        <h2 className="text-2xl font-bold text-white mb-4">Available Servers</h2>
+                                                        <div className="space-y-3">
+                                                                {normalizedEpisode?.servers?.length ? (
+                                                                        normalizedEpisode.servers.map((server, index) => (
+                                                                                <div
+                                                                                        key={server.real_video || index}
+                                                                                        className="flex items-center justify-between rounded-2xl border border-white/10 bg-card/60 px-5 py-4 text-sm text-muted hover:border-primary/50 transition"
+                                                                                >
+                                                                                        <span className="font-medium">
+                                                                                                Server {server.option ?? index + 1}
+                                                                                        </span>
+                                                                                        <button
+                                                                                                type="button"
+                                                                                                onClick={() => {
+                                                                                                        setPlayerOpen(true);
+                                                                                                }}
+                                                                                                className="rounded-full bg-primary/10 border border-primary px-4 py-2 text-xs font-semibold text-primary transition hover:bg-primary hover:text-white"
+                                                                                        >
+                                                                                                Play
+                                                                                        </button>
+                                                                                </div>
+                                                                        ))
+                                                                ) : (
+                                                                        <p className="rounded-2xl bg-card/60 px-5 py-4 text-sm text-muted">
+                                                                                No servers available at the moment.
+                                                                        </p>
+                                                                )}
+                                                        </div>
+                                                </div>
                                         </div>
                                 </div>
                         </section>
@@ -201,23 +233,11 @@ function Movie() {
                                 episode={normalizedEpisode}
                                 onPrev={null}
                                 onNext={null}
-                                seriesTitle={movie?.title}
+                                moviePoster={movie?.poster || movie?.poster_image}
                                 episodeInfo={{
-                                        movieSlug: id,
-                                        movieTitle: movie?.title
+                                    movieTitle: movie?.title,
+                                    movieSlug: id
                                 }}
-                                moviePoster={movie?.poster_image || movie?.image}
-                        />
-
-                        <StoredComments 
-                                title={movie?.title}
-                                comments={comments}
-                                onAddComment={(username, text) => addMovieComment(id, username, text).then((res) => {
-                                        setComments([...comments, res.comment]);
-                                })}
-                                type="movie"
-                                user={user ? { ...user, username: userProfile?.username } : null}
-                                movieSlug={id}
                         />
                 </>
         );

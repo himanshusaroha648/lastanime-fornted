@@ -1,11 +1,20 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Supabase client
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
 function Auth() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { signIn, signUp, user } = useAuth();
+  
   const [isLogin, setIsLogin] = useState(true);
   const [emailOrUsername, setEmailOrUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -27,6 +36,14 @@ function Auth() {
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
+  useEffect(() => {
+    const query = new URLSearchParams(location.search);
+    if (query.get('type') === 'recovery') {
+      setShowForgotPass(true);
+      setForgotStep(2);
+    }
+  }, [location]);
+
   if (user) {
     navigate('/');
     return null;
@@ -37,15 +54,21 @@ function Auth() {
     setError('');
     setLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/forgot-password`, {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const cleanBaseUrl = baseUrl.endsWith('/api') ? baseUrl.slice(0, -4) : baseUrl;
+      
+      const response = await fetch(`${cleanBaseUrl}/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail })
+        body: JSON.stringify({ 
+          email: forgotEmail,
+          redirectTo: `${window.location.origin}/auth?type=recovery`
+        })
       });
+      
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
-      setSuccess('OTP sent to your email');
-      setForgotStep(2);
+      if (!response.ok) throw new Error(data.error || 'Failed to send reset link');
+      setSuccess('Password reset link sent to your email via our server!');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -58,14 +81,12 @@ function Auth() {
     setError('');
     setLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail, otp, newPassword })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
-      setSuccess('Password reset successful! You can now login.');
+      // For Supabase native recovery, the user is already signed in with a temporary session
+      // after clicking the email link. We can use updatePassword directly.
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      
+      setSuccess('Password updated successfully! You can now login.');
       setShowForgotPass(false);
       setIsLogin(true);
       setForgotStep(1);

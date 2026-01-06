@@ -285,8 +285,8 @@ function Home() {
                                                                         <div className="relative aspect-[2/3] overflow-hidden rounded-lg">
                                                                                 {item.poster_image ? (
                                                                                         <img
-                                                                                                src={item.poster_image}
-                                                                                                alt={item.title}
+                                                                                                src={typeof item.poster_image === 'object' ? item.poster_image?.value : item.poster_image}
+                                                                                                alt={typeof item.title === 'object' ? item.title?.value : item.title}
                                                                                                 className="w-full h-full object-cover object-center"
                                                                                                 loading="lazy"
                                                                                                 style={{ imageRendering: 'high-quality' }}
@@ -299,7 +299,7 @@ function Home() {
                                                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-transparent to-transparent" />
                                                                                 <div className="absolute bottom-0 left-0 right-0 p-2">
                                                                                         <p className="text-[10px] sm:text-xs font-medium text-white truncate leading-tight">
-                                                                                                {item.series_name || item.movie_name || item.title}
+                                                                                                {typeof item.series_name === 'object' ? item.series_name?.value : (typeof item.movie_name === 'object' ? item.movie_name?.value : (item.series_name || item.movie_name || (typeof item.title === 'object' ? item.title?.value : item.title)))}
                                                                                         </p>
                                                                                         {item.rating && (
                                                                                                 <p className="text-[9px] text-primary mt-0.5">
@@ -330,17 +330,20 @@ function Home() {
                                                                         key={item.id}
                                                                         className="episode-card-horizontal cursor-pointer"
                                                                         onClick={() => {
-                                                                                if (item.series_slug) {
-                                                                                        const episodeId = `${item.season_number || 1}-${item.episode_number || 1}`;
-                                                                                        navigate(`/series/${item.series_slug}/episode/${episodeId}`);
+                                                                                const sSlug = typeof item.series_slug === 'object' ? item.series_slug?.value : item.series_slug;
+                                                                                if (sSlug) {
+                                                                                        const epNum = typeof item.episode_number === 'object' ? item.episode_number?.value : item.episode_number;
+                                                                                        const seaNum = typeof item.season_number === 'object' ? item.season_number?.value : item.season_number;
+                                                                                        const episodeId = `${seaNum || 1}-${epNum || 1}`;
+                                                                                        navigate(`/series/${sSlug}/episode/${episodeId}`);
                                                                                 }
                                                                         }}
                                                                 >
                                                                         <div className="relative aspect-[16/9] overflow-hidden rounded-lg">
                                                                                 {item.poster_image ? (
                                                                                         <img
-                                                                                                src={item.poster_image}
-                                                                                                alt={item.title}
+                                                                                                src={typeof item.poster_image === 'object' ? item.poster_image?.value : item.poster_image}
+                                                                                                alt={typeof item.title === 'object' ? item.title?.value : item.title}
                                                                                                 className="w-full h-full object-cover object-center"
                                                                                                 loading="lazy"
                                                                                                 style={{ imageRendering: 'high-quality' }}
@@ -351,15 +354,27 @@ function Home() {
                                                                                         </div>
                                                                                 )}
                                                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent" />
-                                                                                <div className="absolute bottom-0 left-0 right-0 p-2">
-                                                                                        <p className="text-[10px] sm:text-xs font-medium text-white truncate leading-tight">
-                                                                                                {item.series_name || item.movie_name || item.title}
+                                                                                <div className="absolute bottom-0 left-0 right-0 p-2 z-10">
+                                                                                        <p className="text-[11px] sm:text-xs font-bold text-white line-clamp-2 leading-tight drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] mb-1">
+                                                                                                {(() => {
+                                                                                                        const sName = typeof item.series_name === 'object' ? item.series_name?.value : item.series_name;
+                                                                                                        const mName = typeof item.movie_name === 'object' ? item.movie_name?.value : item.movie_name;
+                                                                                                        const title = typeof item.title === 'object' ? item.title?.value : item.title;
+                                                                                                        return sName || mName || title || 'Unknown Title';
+                                                                                                })()}
                                                                                         </p>
-                                                                                        {item.episode_number && (
-                                                                                                <p className="text-[9px] sm:text-[10px] text-primary mt-0.5">
-                                                                                                        S{item.season_number || '1'}E{item.episode_number}
-                                                                                                </p>
-                                                                                        )}
+                                                                                        <div className="flex items-center justify-between">
+                                                                                                {(item.episode_number || item.season_number) && (
+                                                                                                        <p className="text-[10px] text-primary font-black drop-shadow-sm">
+                                                                                                                S{typeof item.season_number === 'object' ? (item.season_number?.value || '1') : (item.season_number || '1')} E{typeof item.episode_number === 'object' ? item.episode_number?.value : item.episode_number}
+                                                                                                        </p>
+                                                                                                )}
+                                                                                                {item.watched_at && (
+                                                                                                        <p className="text-[9px] text-white/80 font-bold drop-shadow-sm">
+                                                                                                                {new Date(item.watched_at).toLocaleDateString()}
+                                                                                                        </p>
+                                                                                                )}
+                                                                                        </div>
                                                                                 </div>
                                                                         </div>
                                                                 </div>

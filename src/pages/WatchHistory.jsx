@@ -116,10 +116,18 @@ function WatchHistory() {
           <h2 className="text-lg font-semibold text-muted uppercase tracking-wide mb-4">{date}</h2>
           <div className="space-y-4">
             {items.map((item) => {
-              const watchLink = item.series_slug 
-                ? `/series/${item.series_slug}/episode/${item.season_number}-${item.episode_number}`
-                : item.movie_slug 
-                ? `/movie/${item.movie_slug}`
+              const sSlug = typeof item.series_slug === 'object' ? item.series_slug?.value : item.series_slug;
+              const mSlug = typeof item.movie_slug === 'object' ? item.movie_slug?.value : item.movie_slug;
+              const epNum = typeof item.episode_number === 'object' ? item.episode_number?.value : item.episode_number;
+              const seaNum = typeof item.season_number === 'object' ? item.season_number?.value : item.season_number;
+              const sName = typeof item.series_name === 'object' ? item.series_name?.value : item.series_name;
+              const mName = typeof item.movie_name === 'object' ? item.movie_name?.value : item.movie_name;
+              const titleText = typeof item.title === 'object' ? item.title?.value : item.title;
+
+              const watchLink = sSlug 
+                ? `/series/${sSlug}/episode/${seaNum || 1}-${epNum || 1}`
+                : mSlug 
+                ? `/movie/${mSlug}`
                 : '#';
 
               return (
@@ -129,11 +137,11 @@ function WatchHistory() {
                   className="flex gap-4 p-4 rounded-xl border border-white/10 bg-card/40 hover:bg-card/60 transition group cursor-pointer"
                 >
                   {/* Poster */}
-                  {item.poster_image && (
+                  {(item.poster_image) && (
                     <div className="flex-shrink-0">
                       <img
-                        src={item.poster_image}
-                        alt={item.title}
+                        src={typeof item.poster_image === 'object' ? item.poster_image?.value : item.poster_image}
+                        alt={titleText}
                         className="w-40 sm:w-48 aspect-video rounded-lg object-cover shadow-md group-hover:scale-[1.02] transition-transform duration-300"
                       />
                     </div>
@@ -142,13 +150,13 @@ function WatchHistory() {
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <h3 className="text-lg font-semibold text-white truncate group-hover:text-primary transition-colors">
-                      {item.title || item.series_name || item.movie_name}
+                      {titleText || sName || mName}
                     </h3>
                     
-                    {item.episode_number && (
+                    {epNum && (
                       <p className="text-sm text-muted mt-1">
-                        Episode {item.episode_number}
-                        {item.season_number && ` • Season ${item.season_number}`}
+                        Episode {epNum}
+                        {seaNum && ` • Season ${seaNum}`}
                       </p>
                     )}
 
