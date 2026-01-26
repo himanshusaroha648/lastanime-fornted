@@ -48,7 +48,7 @@ function PlayerModal({ open, onClose, episode, onPrev, onNext, seriesTitle, epis
                 
                 // Server Priority Logic
                 const priorityDomains = [
-                    'play.zephyrflick.top',
+                    'as-cdn21.top',
                     'rubystm.com',
                     'vidmoly.net',
                     'short.icu'
